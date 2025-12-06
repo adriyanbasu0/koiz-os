@@ -42,7 +42,8 @@ section '.bss'
         ;           Most commonly, this is 512 (0x0200)
         ;           NOTE that we need to make this little-endian below!!
         db 0x00
-        db 0x20
+        db 0x02
+
 
         ; Offset 0xD - 1 byte
         ;           This is the number of sectors per cluster in powers of two.

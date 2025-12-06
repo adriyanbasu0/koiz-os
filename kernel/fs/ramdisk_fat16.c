@@ -230,68 +230,88 @@ void ramdisk_fat16_format()
     write_sector(SECOND_FAT_TABLE_SECTOR, starting_sectors);
 }
 
+/**
+ * fat16_is_valid_char - characters that are Illegal in fat16
+ */
+static int fat16_is_valid_char(uint8_t c) {
+    /* Illegal in F */
+    if (c < 0x20) return 0;
+    switch (c) {
+        case '"': case '*': case '/': case ':':
+        case '<': case '>': case '?': case '\\':
+        case '|': case '+': case ',': case ';':
+        case '=': case '[': case ']':
+            return 0;
+    }
+    return 1;
+}
 
 /**
  * ramdisk_fat16_filename_to_native() - converts a filename to natively
  *                                        stored filename in FAT16
- * 
+ *
  * @file_name:      destination native file buffer (needs to be LENGTH 11)
  * @raw_file_name:  raw filename to convert
- * 
+ *
  * the raw_file_name can be any length as it will be truncated down to size
  * returns file_name
  */
+
 uint8_t* ramdisk_fat16_filename_to_native(
-    uint8_t* native_file_name, uint8_t* raw_file_name) 
+    uint8_t* native_file_name, uint8_t* raw_file_name)
 {
-    /* Set up the buffers to the file name */
     uint8_t file_name_buffer[8];
     uint8_t file_ext_buffer[3];
 
-    /* Fill buffers with blanks by default */
+    /* FAT uses spaces (0x20) as padding */
     memset(file_name_buffer, 0x20, 8);
     memset(file_ext_buffer, 0x20, 3);
 
-     /* Format the file name given to FAT16 */
-    int proc_file_name = 1;
+    int proc_file_name = 1; /* 1 = name, 0 = extension */
     int i = 0;
     int j = 0;
 
-    /* Loop through the file name */
-    while(raw_file_name[i] != '\0') {
+    while (raw_file_name[i] != '\0') {
+        uint8_t c = raw_file_name[i];
 
-        /* TODO: Check for valid filename */
+        /* --- Validate FAT allowed characters --- */
+        if (c != '.' && !fat16_is_valid_char(c)) {
+            return 0;  /* invalid filename */
+        }
 
-        /* Handle file name */
-        if(proc_file_name) {
+        /* --- Convert to uppercase as FAT16 requires --- */
+        if (c >= 'a' && c <= 'z') {
+            c -= 32; /* ASCII uppercase */
+        }
 
-            /* Switch to processing file extension */
-            if(raw_file_name[i] == '.') {
-                proc_file_name = 0;
-                j = 0;
-                ++i;
-                continue;
-            }
+        /* --- Switch to extension on '.' --- */
+        if (c == '.' && proc_file_name) {
+            proc_file_name = 0;
+            j = 0;
+            i++;
+            continue;
+        }
 
-            /* Add to filename buffer if we have room */
-            if(j < 8) {
-                file_name_buffer[j] = raw_file_name[i];
-                j++;
-            }
-
-        } 
-        /* Handle file extension */
-        else {
-            /* Add to file extension buffer if we have room */
-            if(j < 3) {
-                file_ext_buffer[j] = raw_file_name[i];
+        /* --- Copy to name portion --- */
+        if (proc_file_name) {
+            if (j < 8) {
+                file_name_buffer[j] = c;
                 j++;
             }
         }
-        ++i;
+        /* --- Copy to extension portion --- */
+        else {
+            if (j < 3) {
+                file_ext_buffer[j] = c;
+                j++;
+            }
+        }
+
+        i++;
     }
 
-    memcpy(native_file_name, file_name_buffer, 8);
+    /* Output final 11-byte 8.3 name */
+    memcpy(native_file_name,     file_name_buffer, 8);
     memcpy(native_file_name + 8, file_ext_buffer, 3);
 
     return native_file_name;
@@ -545,6 +565,7 @@ void ramdisk_fat16_list_info()
     printf("\n");
 
     /* TODO: list orphaned clusters */
+
 }
 
 void ramdisk_fat16_init()

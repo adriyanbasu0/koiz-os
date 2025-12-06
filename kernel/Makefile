@@ -8,7 +8,7 @@ CC = gcc
 CFLAGS = -Werror -g -m32 -ffreestanding -mno-red-zone -Wall
 
 # FASM
-ASMC = fasm.x64
+ASMC = fasm
 ASMFLAGS =
 
 # Linker
