@@ -37,6 +37,7 @@ void io_byte_out(uint16_t port, uint8_t data);
  */
 void io_word_out(uint16_t port, uint16_t data);
 
+
 /**
  * io_wait() - Waits for some time
  */

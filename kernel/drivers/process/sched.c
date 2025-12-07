@@ -92,9 +92,8 @@ void sched_printinfo(void)
 
 void sched_update(void)
 {
-
-    /* Scenerio 1: No current process exists. 
-        In this case, simply find one in the highest priority queue */
+    /* Scenario 1: No current process exists.
+     *      In this case, simply find one in the highest priority queue */
     if(current_process == NULL) {
         int i = 0;
         for(i = 0; i < MAX_PRIORITY_QUEUES; i++) {
@@ -104,18 +103,15 @@ void sched_update(void)
             }
         }
         return;
-    } 
-    
+    }
+
     /* Sanity checks */
-    if(current_process == NULL) 
+    if(current_process == NULL)
         panic("Expected a current_process at this point!\n");
-    if(current_process->ptr == NULL) 
+    if(current_process->ptr == NULL)
         panic("There exists a null process in the scheduler!\n");
-        
-    /* Decrement the current process by number of tickets 
-    (if applicable).
-        TODO: If the process yielded it's time beforehand, 
-    take that into account */
+
+    /* Decrement the current process by number of tickets (if applicable). */
     current_process->tickets_remaining -= FULL_TIMESLICE_COST;
     if(current_process->tickets_remaining < 0) {
         current_process->tickets_remaining = 0;
@@ -138,10 +134,10 @@ void sched_update(void)
                 while(curr != NULL) {
                     if(curr->next_process != NULL &&
                         curr->next_process == current_process) {
-                            curr->next_process = next;
-                            break;
+                        curr->next_process = next;
+                    break;
                         }
-                    curr = curr->next_process;
+                        curr = curr->next_process;
                 }
                 if(curr == NULL) {
                     panic("Cannot find current process in priority!");
@@ -152,7 +148,7 @@ void sched_update(void)
             int newprior = current_process->priority + 1;
             if(newprior >= MAX_PRIORITY_QUEUES)
                 panic("Moved to an out of bounds priority!");
-            
+
             /* Add to lower priority queue */
             current_process->priority = newprior;
             current_process->tickets_remaining = STARTING_TICKETS;
@@ -160,9 +156,9 @@ void sched_update(void)
             proc_priority_list[newprior] = current_process;
         }
     }
-    
-    /* Scenerio 2: Current process is NOT highest priority.
-        Switch to a higher priority process (if possible) */
+
+    /* Scenario 2: Current process is NOT highest priority.
+     *      Switch to a higher priority process (if possible) */
     if(current_process->priority != 0) {
         struct mlfq_entry* new_process = current_process;
         int i = 0;
@@ -179,8 +175,8 @@ void sched_update(void)
         }
     }
 
-    /* Scenerio 3: Current process is the highest priority.
-        Switch to the next process in line (if possible) */
+    /* Scenario 3: Current process is the highest priority.
+     *      Switch to the next process in line (if possible) */
     int cpr = current_process->priority;
     if(current_process->next_process != NULL) {
         current_process = current_process->next_process;
@@ -188,12 +184,77 @@ void sched_update(void)
         current_process = proc_priority_list[cpr];
     }
 
-    /* Scenerio 4: We're the only highest priority process.
-        Continue as is! */
+    /* Scenario 4: We're the only highest priority process.
+     *      Continue as is! */
+
+    /* --------------------------------------------------------- */
+    /* HANDLE KILLED PROCESSES                                   */
+    /* --------------------------------------------------------- */
+
+    /* Check if the running process is marked as killed */
+    if (current_process->ptr->killed && current_process->ptr->pid != 0) {
+
+        current_process->ptr->state = ZOMBIE;
+
+        /* Force switch to IDLE process (PID 0)
+         *          This ensures we don't execute dead code and safe to reap below */
+        current_process = &proc_list[0];
+    }
 
 
-    /* TODO: If the running process is marked as killed, 
-        switch to IDLE process and zombie it.*/
+    /* --------------------------------------------------------- */
+    /* REAP ZOMBIE PROCESSES                                     */
+    /* --------------------------------------------------------- */
 
-    /* TODO: Reap zombie processes at this point */
+    /* Iterate through all priority queues to find ZOMBIES */
+    int q = 0;
+    for(q = 0; q < MAX_PRIORITY_QUEUES; q++) {
+        struct mlfq_entry* curr = proc_priority_list[q];
+        struct mlfq_entry* prev = NULL;
+
+        while(curr != NULL) {
+            /* Check if the entry points to a ZOMBIE process */
+            if (curr->ptr->state == ZOMBIE && curr->ptr->pid != 0) {
+
+                /* 1. Unlink from the Linked List */
+                if (prev == NULL) {
+                    /* Removing the head of the list */
+                    proc_priority_list[q] = curr->next_process;
+                } else {
+                    /* Removing from middle/end */
+                    prev->next_process = curr->next_process;
+                }
+
+                /* 2. Release Process Resources */
+                struct process* zproc = curr->ptr;
+
+                // IMPORTANT: We must clear the memory pointer so process_init_process
+                // doesn't panic when reusing this PID.
+                // TODO: Call pmem_free(zproc->process_memory_start) here if available.
+                zproc->process_memory_start = NULL;
+                zproc->process_memory_size = 0;
+
+                /* 3. Reset Process Slot */
+                zproc->killed = 0;
+                zproc->state = UNUSED;
+
+                /* 4. Reset Scheduler Entry */
+                struct mlfq_entry* to_reap = curr;
+                to_reap->priority = 0;
+                to_reap->tickets_remaining = 0;
+                // Note: We leave to_reap->ptr linked, as the slot is now UNUSED
+
+                /* Move curr forward, but keep prev where it is (since curr is gone) */
+                curr = curr->next_process;
+
+                /* Break the link on the reaped node for safety */
+                to_reap->next_process = NULL;
+
+            } else {
+                /* Not a zombie, just move forward */
+                prev = curr;
+                curr = curr->next_process;
+            }
+        }
+    }
 }
