@@ -37,6 +37,23 @@ void io_byte_out(uint16_t port, uint8_t data);
  */
 void io_word_out(uint16_t port, uint16_t data);
 
+/**
+ * io_dword_in() - Reads a double word (32-bit) of data from an IO port
+ * 
+ * @port:   Port to read from
+ * 
+ * Returns double word of data read from IO port
+ */
+uint32_t io_dword_in(uint16_t port);
+
+/**
+ * io_dword_out() - Writes a double word (32-bit) of data to the IO port
+ * 
+ * @port:   Port to write to
+ * @data:   Double word of data to write
+ */
+void io_dword_out(uint16_t port, uint32_t data);
+
 
 /**
  * io_wait() - Waits for some time

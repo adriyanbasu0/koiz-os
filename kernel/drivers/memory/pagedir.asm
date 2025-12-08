@@ -32,5 +32,13 @@ section '.text' executable
         POPAD
         ret
 
+    public vmem_flush_tlb_single
+    ;; vmem_flush_tlb_single() - Flushes a single entry in the TLB
+    ;;
+    ;; @ECX:    Virtual address to flush
+    vmem_flush_tlb_single:
+        invlpg [ecx]
+        ret
+
 section '.rodata'
     msg db "Page Directory Address %x",0xA,0

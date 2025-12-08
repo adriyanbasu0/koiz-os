@@ -249,6 +249,11 @@ void* pmem_alloc()
             printf("pmem: allocating record %d at addr %x for %x\n", 
                 start_record, record_ptr, pmem_addr);
 #endif
+            // Zero out the allocated memory block
+            uint32_t* page = (uint32_t*)pmem_addr;
+            for (int k = 0; k < PHYS_BLOCK_SIZE / sizeof(uint32_t); k++) {
+                page[k] = 0;
+            }
             return pmem_addr;
         }
 

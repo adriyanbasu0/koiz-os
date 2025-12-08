@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* Include our drivers */ 
+/* Include our drivers */
 #include "drivers/serial/serial.h"
 #include "drivers/irq/idt_setup.h"
 #include "drivers/irq/pic.h"
@@ -14,6 +14,8 @@
 #include "drivers/process/sched.h"
 #include "drivers/ramdisk/ramdisk.h"
 #include "drivers/tss/tss.h"
+#include "drivers/pci/pci.h"
+
 
 /* Include our filesystem stuff */
 #include "fs/ramdisk_fat16.h"
@@ -43,7 +45,8 @@ void kernel_init()
     /* Initialize the serial connection right away */
     /* We use this for logging messagse in stdlib.h */
     uint8_t serial_started = serial_init(PORT_COM1);
-    if(serial_started != SERIAL_SUCCESS) {
+    if (serial_started != SERIAL_SUCCESS)
+    {
         printf("error initializaing serial port COM1\n");
         panic("cannot initialize serial connection");
         return;
@@ -71,7 +74,7 @@ void kernel_init()
     /* Enable paging and virtual memory */
     vmem_init();
     vmem_run_tests();
-    
+
     /* Run the tests BEFORE initializing the ramdisk! */
     ramdisk_run_tests();
 
@@ -89,7 +92,7 @@ void kernel_init()
 
     /* List malloc memory stuff */
     kmemlist();
-    
+
     /* Load up the TSS */
     load_tss();
 
@@ -99,6 +102,9 @@ void kernel_init()
 
     /* Load and run scheduler */
     sched_init();
+
+    /* Enumerate PCI devices */
+    pci_check_all_buses();
 
     printf("kernel init complete\n");
 }
@@ -118,17 +124,18 @@ void kernel_update(void)
 extern void _enter_usermode(void);
 
 /* Main kernel entry point */
-void kernel_main(multiboot_info_t* mbd, uint32_t magic, 
-    uint32_t kernel_memory_end) 
+void kernel_main(multiboot_info_t *mbd, uint32_t magic,
+                 uint32_t kernel_memory_end)
 {
     printf("kernel memory end is: %x\n", kernel_memory_end);
 
     /* Make sure the magic number matches for memory mapping*/
-    if(magic != MULTIBOOT_BOOTLOADER_MAGIC) {
+    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
+    {
         printf("magic number is %x", magic);
         panic("invalid magic number!");
     }
-    
+
     /* Sets multiboot info to drivers that need it */
     pmem_set_mbd(mbd, kernel_memory_end);
 
@@ -142,9 +149,10 @@ void kernel_main(multiboot_info_t* mbd, uint32_t magic,
     _enter_usermode();
 
     panic("shouldn't reach here?");
-    
-    while(1) {
+
+    while (1)
+    {
         kernel_update();
     }
-	__builtin_unreachable(); 
+    __builtin_unreachable();
 }

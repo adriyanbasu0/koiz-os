@@ -62,6 +62,29 @@ void io_word_out(uint16_t port, uint16_t data)
     );
 }
 
+// This is just the double word variant of above
+uint32_t io_dword_in(uint16_t port)
+{
+    uint32_t result;
+    __asm__(
+        "in %%dx, %%eax"
+        : "=a" (result) // put EAX register in result
+        : "d" (port)    // load [R,E]DX with port
+    );
+    return result;
+}
+
+// This is just the double word variant of above
+void io_dword_out(uint16_t port, uint32_t data)
+{
+    __asm__(
+        "out %%eax, %%dx"
+        : // No input reg
+        : "a" (data), // load [R,E]ax with data
+          "d" (port) // load [R,E]dx with port
+    );
+}
+
 /* 
  * Uses port 0x80 which is used for checkpoints during post.
  * 

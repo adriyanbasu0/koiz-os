@@ -38,9 +38,7 @@ section '.bss'
         db "mkfs.dos"
 
         ; Offset 0xB - 2 bytes
-        ;           This is the number of bytes per sector in powers of two
-        ;           Most commonly, this is 512 (0x0200)
-        ;           NOTE that we need to make this little-endian below!!
+        ; Most commonly, this is 512 (0x0200)
         db 0x00
         db 0x02
 
